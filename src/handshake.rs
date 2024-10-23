@@ -1,4 +1,4 @@
-use crate::tungstenite::{PSTReceiver, PSTSender};
+use crate::alias::{PSTReceiver, PSTSender};
 use async_trait::async_trait;
 use eyre::Result as EResult;
 

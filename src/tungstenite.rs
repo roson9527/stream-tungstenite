@@ -1,25 +1,28 @@
+use crate::alias::{PSTReceiver, PSTSender, WsTcpStream};
 use crate::config::ReconnectOptions;
 use crate::errors::ReconnectTError;
-use crate::event_listeners::EventListeners;
+use crate::maybe_sender::{MaybePSTSender, ShareListener};
 use eyre::Result as EResult;
-use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::StreamExt;
 use std::sync::Arc;
-use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 use tokio::time::{interval_at, Instant};
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
-pub type WsTcpStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
-pub type PSTSender = SplitSink<WsTcpStream, Message>;
-pub type PSTReceiver = SplitStream<WsTcpStream>;
+#[derive(Clone)]
+
+pub enum WsStreamStatus {
+    Connected,
+    Disconnected,
+}
 
 pub struct ReconnectT {
     pub url: String,
     pub option: ReconnectOptions,
-    pub sender: Arc<Mutex<Option<PSTSender>>>, // using Mutex to lock the sender,
-    pub receiver_stream: Arc<Mutex<EventListeners<Message>>>,
+    pub sender: Arc<MaybePSTSender>,
+    receive_stream: Arc<ShareListener<Message>>,
+    status_stream: Arc<ShareListener<WsStreamStatus>>,
 }
 
 impl ReconnectT {
@@ -28,14 +31,23 @@ impl ReconnectT {
         Self {
             url,
             option,
-            sender: Arc::new(Mutex::new(None)),
-            receiver_stream: Arc::new(Mutex::new(EventListeners::default())),
+            sender: Arc::new(MaybePSTSender::default()),
+            receive_stream: Arc::new(ShareListener::default()),
+            status_stream: Arc::new(ShareListener::default()),
         }
+    }
+
+    pub async fn new_receive_stream(&self) -> UnboundedReceiverStream<Message> {
+        self.receive_stream.new_listener().await
+    }
+
+    pub async fn new_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
+        self.status_stream.new_listener().await
     }
 }
 
 impl ReconnectT {
-    pub async fn connect(&self) -> WsTcpStream {
+    pub(crate) async fn connect(&self) -> WsTcpStream {
         let mut retries_to_attempt = self.option.retries_to_attempt_fn()();
         let mut count = 0;
         loop {
@@ -55,7 +67,7 @@ impl ReconnectT {
         }
     }
 
-    pub async fn handshake(
+    pub(crate) async fn handshake(
         &self,
         writer: &PSTSender,
         reader: &PSTReceiver,
@@ -69,23 +81,25 @@ impl ReconnectT {
         }
     }
 
-    pub async fn receive_loop(&self, mut receiver: PSTReceiver) -> EResult<(), ReconnectTError> {
+    pub(crate) async fn receive_loop(
+        &self,
+        mut receiver: PSTReceiver,
+    ) -> EResult<(), ReconnectTError> {
         let receive_timeout = self.option.receive_timeout();
         let start_time = Instant::now();
         let mut receive_timeout_tick = interval_at(start_time + receive_timeout, receive_timeout);
 
-        let listener = self.receiver_stream.clone();
+        let listener = self.receive_stream.clone();
         loop {
             tokio::select! {
                 msg = receiver.next() => {
                     match msg {
                         Some(Ok(msg)) => {
-                            let mut listener = listener.lock().await;
-                            listener.notify(msg);
+                            listener.notify(msg).await;
                             receive_timeout_tick.reset();
                         },
                         Some(Err(e)) => {
-                            return Err(ReconnectTError::ReceiveErrMessage(e));
+                            return Err(ReconnectTError::TokioTungsteniteError(e));
                         },
                         None => break, // Connection closed
                     }
@@ -100,10 +114,7 @@ impl ReconnectT {
 
     pub async fn run(&self) {
         loop {
-            {
-                let mut self_sender = self.sender.lock().await; // Declare as mutable
-                *self_sender = None;
-            }
+            self.sender.clear_sender().await;
             let ws_stream = self.connect().await;
             let (sender, receiver) = ws_stream.split(); // Removed `mut` from receiver
             {
@@ -111,14 +122,17 @@ impl ReconnectT {
                 if let Err(_) = self.handshake(&sender, &receiver).await {
                     continue;
                 }
-                let mut self_sender = self.sender.lock().await; // Declare as mutable
-                *self_sender = Some(sender);
+                self.sender.set_sender(sender).await;
+                self.status_stream.notify(WsStreamStatus::Connected).await;
             }
 
             // receive loop
             if let Err(e) = self.receive_loop(receiver).await {
                 tracing::error!(error=?e, "reconnect::receive_loop");
             }
+            self.status_stream
+                .notify(WsStreamStatus::Disconnected)
+                .await;
         }
     }
 }
