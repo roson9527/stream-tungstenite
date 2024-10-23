@@ -92,6 +92,8 @@ impl ReconnectT {
         let listener = self.receive_stream.clone();
         loop {
             tokio::select! {
+                biased;
+
                 msg = receiver.next() => {
                     match msg {
                         Some(Ok(msg)) => {
