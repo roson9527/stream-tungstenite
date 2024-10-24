@@ -1,10 +1,9 @@
 [package]
 name = "stream-tungstenite"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["roson9527"]
 description = "A streaming implementation of the Tungstenite WebSocket protocol"
-license = "Apache-2.0"
 license-file = "LICENSE"
 rust-version = "1.80.0"
 readme = "README.md"
