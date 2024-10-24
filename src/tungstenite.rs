@@ -1,4 +1,4 @@
-use crate::alias::{PSTReceiver, PSTSender, WsTcpStream};
+use crate::types::{PSTReceiver, PSTSender, WsTcpStream};
 use crate::config::ReconnectOptions;
 use crate::errors::ReconnectTError;
 use crate::extension::prelude::ReconnectTExtension;

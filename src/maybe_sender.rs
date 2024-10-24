@@ -1,4 +1,4 @@
-use crate::alias::PSTSender;
+use crate::types::PSTSender;
 use crate::errors::ReconnectTError;
 use eyre::Result as EResult;
 use futures_util::SinkExt;

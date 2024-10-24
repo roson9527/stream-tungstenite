@@ -1,14 +1,20 @@
 pub mod config;
 pub mod handshake;
 pub mod strategies;
+
 pub mod tungstenite;
+
+pub mod tokio_tungstenite {
+    pub use tokio_tungstenite::*;
+}
 
 pub mod errors;
 pub(crate) mod event_listeners;
 pub(crate) mod extension;
 pub(crate) mod maybe_sender;
 
-pub(crate) mod alias {
+/// Contains type aliases for WebSocket stream components.
+pub(crate) mod types {
     use futures_util::stream::{SplitSink, SplitStream};
     use tokio::net::TcpStream;
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
@@ -19,16 +25,20 @@ pub(crate) mod alias {
     pub type PSTReceiver = SplitStream<WsTcpStream>;
 }
 
+/// Represents the connection status of a WebSocket stream.
 pub(crate) mod status {
     #[derive(Clone)]
     pub enum WsStreamStatus {
+        /// The WebSocket stream is connected.
         Connected,
+        /// The WebSocket stream is disconnected.
         Disconnected,
     }
 }
 
+/// A prelude module for convenient imports of commonly used items.
 pub mod prelude {
-    pub use super::alias::*;
+    pub use super::types::*;
     pub use super::config::*;
     pub use super::errors::*;
     pub use super::event_listeners::*;
