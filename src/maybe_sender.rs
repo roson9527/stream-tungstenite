@@ -1,11 +1,9 @@
 use crate::alias::PSTSender;
 use crate::errors::ReconnectTError;
-use crate::event_listeners::EventListeners;
 use eyre::Result as EResult;
 use futures_util::SinkExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tungstenite::Message;
 
 pub enum OptPSTSender {
@@ -26,12 +24,12 @@ impl Default for MaybePSTSender {
 }
 
 impl MaybePSTSender {
-    pub async fn set_sender(&self, sender: PSTSender) {
+    pub(crate) async fn set_sender(&self, sender: PSTSender) {
         let mut lock = self.inner.lock().await;
         *lock = OptPSTSender::Some(sender);
     }
 
-    pub async fn clear_sender(&self) {
+    pub(crate) async fn clear_sender(&self) {
         let mut lock = self.inner.lock().await;
         *lock = OptPSTSender::None;
     }
@@ -51,29 +49,5 @@ impl OptPSTSender {
                 .map_err(|e| ReconnectTError::TokioTungsteniteError(e)),
             OptPSTSender::None => Err(ReconnectTError::SenderNotConnected),
         }
-    }
-}
-
-pub struct ShareListener<T> {
-    inner: Arc<Mutex<EventListeners<T>>>,
-}
-
-impl<T: Clone> Default for ShareListener<T> {
-    fn default() -> Self {
-        Self {
-            inner: Arc::new(Mutex::new(EventListeners::default())),
-        }
-    }
-}
-
-impl<T: Clone> ShareListener<T> {
-    pub async fn notify(&self, event: T) {
-        let mut lock = self.inner.lock().await;
-        lock.notify(event);
-    }
-
-    pub async fn new_listener(&self) -> UnboundedReceiverStream<T> {
-        let mut lock = self.inner.lock().await;
-        lock.new_listener()
     }
 }

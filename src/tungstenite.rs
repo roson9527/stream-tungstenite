@@ -1,7 +1,9 @@
 use crate::alias::{PSTReceiver, PSTSender, WsTcpStream};
 use crate::config::ReconnectOptions;
 use crate::errors::ReconnectTError;
-use crate::maybe_sender::{MaybePSTSender, ShareListener};
+use crate::extension::prelude::ReconnectTExtension;
+use crate::maybe_sender::MaybePSTSender;
+use crate::prelude::{ShareListener, WsStreamStatus};
 use eyre::Result as EResult;
 use futures_util::StreamExt;
 use std::sync::Arc;
@@ -9,13 +11,6 @@ use tokio::time::{interval_at, Instant};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
-
-#[derive(Clone)]
-
-pub enum WsStreamStatus {
-    Connected,
-    Disconnected,
-}
 
 pub struct ReconnectT {
     pub url: String,
@@ -43,6 +38,15 @@ impl ReconnectT {
 
     pub async fn new_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
         self.status_stream.new_listener().await
+    }
+
+    pub async fn register_extension(&self, extension: Arc<dyn ReconnectTExtension>) -> EResult<()> {
+        extension
+            .init_msg_stream(self.receive_stream.clone())
+            .await?;
+        extension
+            .init_status_stream(self.status_stream.clone())
+            .await
     }
 }
 
