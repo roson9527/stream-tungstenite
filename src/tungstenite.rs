@@ -142,3 +142,10 @@ impl ReconnectT {
         }
     }
 }
+
+impl ReconnectT {
+    pub fn spawn_run(self: &Arc<Self>) {
+        let self_clone = self.clone();
+        tokio::spawn(async move { self_clone.run().await });
+    }
+}
