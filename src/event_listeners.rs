@@ -1,4 +1,5 @@
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// A collection of event listeners for a task.
@@ -45,5 +46,29 @@ impl<T: Clone> EventListeners<T> {
     /// Returns true if there are no registered listeners.
     pub fn is_empty(&self) -> bool {
         self.listeners.is_empty()
+    }
+}
+
+pub struct ShareListener<T> {
+    inner: Arc<Mutex<EventListeners<T>>>,
+}
+
+impl<T: Clone> Default for ShareListener<T> {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(EventListeners::default())),
+        }
+    }
+}
+
+impl<T: Clone> ShareListener<T> {
+    pub async fn notify(&self, event: T) {
+        let mut lock = self.inner.lock().await;
+        lock.notify(event);
+    }
+
+    pub async fn new_listener(&self) -> UnboundedReceiverStream<T> {
+        let mut lock = self.inner.lock().await;
+        lock.new_listener()
     }
 }
