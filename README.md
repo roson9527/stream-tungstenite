@@ -42,7 +42,7 @@ To include `stream-tungstenite` in your project, add the following to your `Carg
 
 ```toml
 [dependencies]
-stream-tungstenite = "0.1.0"
+stream-tungstenite = "0.3.0"
 ```
 
 ## Contributing
