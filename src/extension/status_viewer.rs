@@ -1,11 +1,11 @@
-use crate::extension::interface::ReconnectTExtension;
-use crate::prelude::{ShareListener, WsStreamStatus};
+use crate::extension::ReconnectTStatusExtension;
+use crate::prelude::WsStreamStatus;
 use async_trait::async_trait;
 use eyre::Result as EResult;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::StreamExt;
-use tungstenite::Message;
 
 pub struct StatusViewer {
     current: Arc<Mutex<WsStreamStatus>>,
@@ -25,18 +25,13 @@ impl StatusViewer {
 }
 
 #[async_trait]
-impl ReconnectTExtension for StatusViewer {
-    async fn init_msg_stream(&self, _msg_listener: Arc<ShareListener<Message>>) -> EResult<()> {
-        // nothing to do
-        Ok(())
-    }
-
+impl ReconnectTStatusExtension for StatusViewer {
     async fn init_status_stream(
         &self,
-        status_listener: Arc<ShareListener<WsStreamStatus>>,
+        status_stream: UnboundedReceiverStream<WsStreamStatus>,
     ) -> EResult<()> {
         let status = self.current.clone();
-        let stream = status_listener.new_listener().await;
+        let stream = status_stream;
         tokio::spawn(async move {
             let status_clone = status.clone();
             let mut stream_clone = stream;
