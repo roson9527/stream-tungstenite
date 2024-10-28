@@ -1,6 +1,6 @@
 [package]
 name = "stream-tungstenite"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 authors = ["roson9527"]
 description = "A streaming implementation of the Tungstenite WebSocket protocol"
