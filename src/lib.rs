@@ -10,7 +10,7 @@ pub mod tokio_tungstenite {
 
 pub mod errors;
 pub(crate) mod event_listeners;
-pub(crate) mod extension;
+pub mod extension;
 pub(crate) mod maybe_sender;
 
 /// Contains type aliases for WebSocket stream components.
@@ -38,14 +38,14 @@ pub(crate) mod status {
 
 /// A prelude module for convenient imports of commonly used items.
 pub mod prelude {
-    pub use super::types::*;
     pub use super::config::*;
     pub use super::errors::*;
     pub use super::event_listeners::*;
-    pub use super::extension::prelude::*;
+    pub use super::extension::*;
     pub use super::handshake::*;
     pub use super::maybe_sender::*;
     pub use super::status::*;
     pub use super::strategies::*;
     pub use super::tungstenite::*;
+    pub use super::types::*;
 }
