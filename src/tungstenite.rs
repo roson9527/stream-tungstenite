@@ -31,11 +31,11 @@ impl ReconnectT {
         }
     }
 
-    pub async fn new_receive_stream(&self) -> UnboundedReceiverStream<Message> {
+    pub async fn create_receive_stream(&self) -> UnboundedReceiverStream<Message> {
         self.receive_stream.new_listener().await
     }
 
-    pub async fn new_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
+    pub async fn create_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
         self.status_stream.new_listener().await
     }
 
@@ -43,20 +43,20 @@ impl ReconnectT {
         match extension {
             ExtensionType::Msg(extension) => {
                 extension
-                    .handle_message_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.create_receive_stream().await)
                     .await
             }
             ExtensionType::Status(extension) => {
                 extension
-                    .handle_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.create_status_stream().await)
                     .await
             }
             ExtensionType::All(extension) => {
                 extension
-                    .handle_message_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.create_receive_stream().await)
                     .await?;
                 extension
-                    .handle_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.create_status_stream().await)
                     .await
             }
         }
@@ -133,7 +133,7 @@ impl ReconnectT {
 
     pub async fn run(&self) {
         loop {
-            self.sender.clear_sender().await;
+            self.sender.reset_sender().await;
             let ws_stream = self.connect().await;
             let (sender, receiver) = ws_stream.split(); // Removed `mut` from receiver
             {
