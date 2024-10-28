@@ -43,20 +43,20 @@ impl ReconnectT {
         match extension {
             ExtensionType::Msg(extension) => {
                 extension
-                    .init_msg_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.new_receive_stream().await)
                     .await
             }
             ExtensionType::Status(extension) => {
                 extension
-                    .init_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.new_status_stream().await)
                     .await
             }
             ExtensionType::All(extension) => {
                 extension
-                    .init_msg_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.new_receive_stream().await)
                     .await?;
                 extension
-                    .init_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.new_status_stream().await)
                     .await
             }
         }

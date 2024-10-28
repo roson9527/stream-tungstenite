@@ -10,7 +10,7 @@ pub mod interface {
 
     #[async_trait]
     pub trait ReconnectTMsgExtension {
-        async fn init_msg_stream(
+        async fn handle_message_stream(
             &self,
             msg_stream: UnboundedReceiverStream<Message>,
         ) -> EResult<()>;
@@ -18,7 +18,7 @@ pub mod interface {
 
     #[async_trait]
     pub trait ReconnectTStatusExtension {
-        async fn init_status_stream(
+        async fn handle_status_stream(
             &self,
             status_stream: UnboundedReceiverStream<WsStreamStatus>,
         ) -> EResult<()>;
