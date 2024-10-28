@@ -1,5 +1,5 @@
-use crate::types::PSTSender;
 use crate::errors::ReconnectTError;
+use crate::types::PSTSender;
 use eyre::Result as EResult;
 use futures_util::SinkExt;
 use std::sync::Arc;

@@ -1,9 +1,8 @@
-use crate::types::{PSTReceiver, PSTSender, WsTcpStream};
 use crate::config::ReconnectOptions;
 use crate::errors::ReconnectTError;
-use crate::extension::prelude::ReconnectTExtension;
 use crate::maybe_sender::MaybePSTSender;
-use crate::prelude::{ShareListener, WsStreamStatus};
+use crate::prelude::{ExtensionType, ShareListener, WsStreamStatus};
+use crate::types::{PSTReceiver, PSTSender, WsTcpStream};
 use eyre::Result as EResult;
 use futures_util::StreamExt;
 use std::sync::Arc;
@@ -40,13 +39,27 @@ impl ReconnectT {
         self.status_stream.new_listener().await
     }
 
-    pub async fn register_extension(&self, extension: Arc<dyn ReconnectTExtension>) -> EResult<()> {
-        extension
-            .init_msg_stream(self.receive_stream.clone())
-            .await?;
-        extension
-            .init_status_stream(self.status_stream.clone())
-            .await
+    pub async fn register_extension(&self, extension: ExtensionType) -> EResult<()> {
+        match extension {
+            ExtensionType::Msg(extension) => {
+                extension
+                    .init_msg_stream(self.new_receive_stream().await)
+                    .await
+            }
+            ExtensionType::Status(extension) => {
+                extension
+                    .init_status_stream(self.new_status_stream().await)
+                    .await
+            }
+            ExtensionType::All(extension) => {
+                extension
+                    .init_msg_stream(self.new_receive_stream().await)
+                    .await?;
+                extension
+                    .init_status_stream(self.new_status_stream().await)
+                    .await
+            }
+        }
     }
 }
 
@@ -143,8 +156,12 @@ impl ReconnectT {
     }
 }
 
-impl ReconnectT {
-    pub fn spawn_run(self: &Arc<Self>) {
+pub trait ArcReconnectTExt {
+    fn spawn_run(&self);
+}
+
+impl ArcReconnectTExt for Arc<ReconnectT> {
+    fn spawn_run(&self) {
         let self_clone = self.clone();
         tokio::spawn(async move { self_clone.run().await });
     }

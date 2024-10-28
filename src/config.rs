@@ -35,8 +35,23 @@ impl ReconnectOptions {
 }
 
 impl ReconnectOptions {
-    pub fn set_handshake(&mut self, handshake: Arc<dyn StreamHandshake + Send + Sync>) {
+    pub fn with_handshake(
+        &mut self,
+        handshake: Arc<dyn StreamHandshake + Send + Sync>,
+    ) -> &mut Self {
         self.inner.handshake = handshake;
+        self
+    }
+
+    pub fn with_receive_timeout(&mut self, receive_timeout: Duration) -> &mut Self {
+        self.inner.receive_timeout = receive_timeout;
+        self
+    }
+
+    pub fn build(&mut self) -> Self {
+        Self {
+            inner: std::mem::take(&mut self.inner),
+        }
     }
 }
 
