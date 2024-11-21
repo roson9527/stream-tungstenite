@@ -29,7 +29,7 @@ impl MaybePSTSender {
         *lock = OptPSTSender::Some(sender);
     }
 
-    pub(crate) async fn clear_sender(&self) {
+    pub(crate) async fn reset_sender(&self) {
         let mut lock = self.inner.lock().await;
         *lock = OptPSTSender::None;
     }

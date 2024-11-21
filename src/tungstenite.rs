@@ -6,24 +6,31 @@ use crate::types::{PSTReceiver, PSTSender, WsTcpStream};
 use eyre::Result as EResult;
 use futures_util::StreamExt;
 use std::sync::Arc;
+use tokio::net::TcpStream;
 use tokio::time::{interval_at, Instant};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{client_async_tls_with_config, Connector, MaybeTlsStream, WebSocketStream};
+use tungstenite::client::IntoClientRequest;
+use tungstenite::error::Error as WsError;
+use tungstenite::error::UrlError;
+use tungstenite::handshake::client::{Request, Response};
+use tungstenite::protocol::WebSocketConfig;
+use tungstenite::Error;
 
-pub struct ReconnectT {
-    pub url: String,
+pub struct ReconnectT<R> {
+    pub request: Box<R>,
     pub option: ReconnectOptions,
     pub sender: Arc<MaybePSTSender>,
     receive_stream: Arc<ShareListener<Message>>,
     status_stream: Arc<ShareListener<WsStreamStatus>>,
 }
 
-impl ReconnectT {
-    pub fn new(url: String, option: Option<ReconnectOptions>) -> Self {
+impl<R: IntoClientRequest + Send + Sync> ReconnectT<R> {
+    pub fn new(request: R, option: Option<ReconnectOptions>) -> Self {
         let option = option.unwrap_or_default();
         Self {
-            url,
+            request: Box::new(request),
             option,
             sender: Arc::new(MaybePSTSender::default()),
             receive_stream: Arc::new(ShareListener::default()),
@@ -31,11 +38,11 @@ impl ReconnectT {
         }
     }
 
-    pub async fn new_receive_stream(&self) -> UnboundedReceiverStream<Message> {
+    pub async fn create_receive_stream(&self) -> UnboundedReceiverStream<Message> {
         self.receive_stream.new_listener().await
     }
 
-    pub async fn new_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
+    pub async fn create_status_stream(&self) -> UnboundedReceiverStream<WsStreamStatus> {
         self.status_stream.new_listener().await
     }
 
@@ -43,32 +50,37 @@ impl ReconnectT {
         match extension {
             ExtensionType::Msg(extension) => {
                 extension
-                    .init_msg_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.create_receive_stream().await)
                     .await
             }
             ExtensionType::Status(extension) => {
                 extension
-                    .init_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.create_status_stream().await)
                     .await
             }
             ExtensionType::All(extension) => {
                 extension
-                    .init_msg_stream(self.new_receive_stream().await)
+                    .handle_message_stream(self.create_receive_stream().await)
                     .await?;
                 extension
-                    .init_status_stream(self.new_status_stream().await)
+                    .handle_status_stream(self.create_status_stream().await)
                     .await
             }
         }
     }
 }
 
-impl ReconnectT {
+impl<R: IntoClientRequest + Send + Sync + Clone> ReconnectT<R> {
     pub(crate) async fn connect(&self) -> WsTcpStream {
         let mut retries_to_attempt = self.option.retries_to_attempt_fn()();
         let mut count = 0;
+        let request = self
+            .request
+            .clone()
+            .into_client_request()
+            .expect("into_client_request");
         loop {
-            match connect_async(self.url.clone()).await {
+            match connect(request.clone(), None, false, None).await {
                 Ok((ws_stream, _)) => return ws_stream,
                 Err(e) => {
                     count += 1;
@@ -86,8 +98,8 @@ impl ReconnectT {
 
     pub(crate) async fn handshake(
         &self,
-        writer: &PSTSender,
-        reader: &PSTReceiver,
+        writer: &mut PSTSender,
+        reader: &mut PSTReceiver,
     ) -> EResult<(), ReconnectTError> {
         match self.option.handshake().handshake(writer, reader).await {
             Ok(_) => Ok(()),
@@ -133,12 +145,12 @@ impl ReconnectT {
 
     pub async fn run(&self) {
         loop {
-            self.sender.clear_sender().await;
+            self.sender.reset_sender().await;
             let ws_stream = self.connect().await;
-            let (sender, receiver) = ws_stream.split(); // Removed `mut` from receiver
+            let (mut sender, mut receiver) = ws_stream.split(); // Removed `mut` from receiver
             {
                 // handshake
-                if let Err(_) = self.handshake(&sender, &receiver).await {
+                if let Err(_) = self.handshake(&mut sender, &mut receiver).await {
                     continue;
                 }
                 self.sender.set_sender(sender).await;
@@ -160,9 +172,43 @@ pub trait ArcReconnectTExt {
     fn spawn_run(&self);
 }
 
-impl ArcReconnectTExt for Arc<ReconnectT> {
+impl<R: IntoClientRequest + Send + Sync + Clone + 'static> ArcReconnectTExt for Arc<ReconnectT<R>> {
     fn spawn_run(&self) {
         let self_clone = self.clone();
         tokio::spawn(async move { self_clone.run().await });
+    }
+}
+
+async fn connect(
+    request: Request,
+    config: Option<WebSocketConfig>,
+    disable_nagle: bool,
+    connector: Option<Connector>,
+) -> Result<(WebSocketStream<MaybeTlsStream<TcpStream>>, Response), Error> {
+    let domain = domain(&request)?;
+    let port = request
+        .uri()
+        .port_u16()
+        .or_else(|| match request.uri().scheme_str() {
+            Some("wss") => Some(443),
+            Some("ws") => Some(80),
+            _ => None,
+        })
+        .ok_or(Error::Url(UrlError::UnsupportedUrlScheme))?;
+
+    let addr = format!("{domain}:{port}");
+    let socket = TcpStream::connect(addr).await.map_err(Error::Io)?;
+
+    if disable_nagle {
+        socket.set_nodelay(true)?;
+    }
+
+    client_async_tls_with_config(request, socket, config, connector).await
+}
+
+fn domain(request: &Request) -> Result<String, WsError> {
+    match request.uri().host() {
+        Some(d) => Ok(d.to_string()),
+        None => Err(WsError::Url(UrlError::NoHostName)),
     }
 }

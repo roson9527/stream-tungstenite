@@ -26,7 +26,7 @@ impl StatusViewer {
 
 #[async_trait]
 impl ReconnectTStatusExtension for StatusViewer {
-    async fn init_status_stream(
+    async fn handle_status_stream(
         &self,
         status_stream: UnboundedReceiverStream<WsStreamStatus>,
     ) -> EResult<()> {
