@@ -4,6 +4,7 @@ use eyre::Result as EResult;
 use futures_util::SinkExt;
 use tokio_stream::StreamExt;
 use tungstenite::Message;
+use tungstenite::protocol::frame::Utf8Payload;
 
 #[async_trait]
 pub trait StreamHandshake {
@@ -25,7 +26,7 @@ pub struct SingleHandshake;
 impl StreamHandshake for SingleHandshake {
     async fn handshake(&self, writer: &mut PSTSender, reader: &mut PSTReceiver) -> EResult<()> {
         let _ = writer
-            .send(Message::Text("hello world".to_string()))
+            .send(Message::Text(Utf8Payload::from("hello world")))
             .await?;
         let _ = reader.next().await;
         Ok(())
