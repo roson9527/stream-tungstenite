@@ -1,6 +1,6 @@
 [package]
 name = "stream-tungstenite"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["roson9527"]
 description = "A streaming implementation of the Tungstenite WebSocket protocol"
@@ -9,19 +9,19 @@ rust-version = "1.80.0"
 readme = "README.md"
 
 [dependencies]
-tokio = { version = "1.41.1", features = ["full"] }
-tokio-stream = { version = "0.1.16", features = ["sync"] }
-tokio-tungstenite = { version = "0.24.0", features = ["native-tls"] }
-tungstenite = { version = "0.24.0", features = ["native-tls"] }
+tokio = { version = "1.42.0", features = ["full"] }
+tokio-stream = { version = "0.1.17", features = ["sync"] }
+tokio-tungstenite = { version = "0.25.0", features = ["native-tls"] }
+tungstenite = { version = "0.25.0", features = ["native-tls"] }
 futures-util = { version = "0.3.31" }
 async-trait = { version = "0.1.83" }
 eyre = { version = "0.6.12" }
 rand = { version = "0.8.5" }
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = { version = "1.0.133" }
+#serde = { version = "1.0.216", features = ["derive"] }
+#serde_json = { version = "1.0.133" }
 
 futures = { version = "0.3.31" }
-tracing = { version = "0.1.40" }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "alloc"] }
-time = { version = "0.3.36" }
+tracing = { version = "0.1.41" }
+#tracing-subscriber = { version = "0.3.18", features = ["env-filter", "alloc"] }
+#time = { version = "0.3.36" }
 thiserror = { version = "2.0.3" }
