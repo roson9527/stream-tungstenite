@@ -1,6 +1,6 @@
 [package]
 name = "stream-tungstenite"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 authors = ["roson9527"]
 description = "A streaming implementation of the Tungstenite WebSocket protocol"
@@ -11,8 +11,8 @@ readme = "README.md"
 [dependencies]
 tokio = { version = "1.42.0", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-tungstenite = { version = "0.25.0", features = ["native-tls"] }
-tungstenite = { version = "0.25.0", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.26.1", features = ["native-tls"] }
+tungstenite = { version = "0.26.1", features = ["native-tls"] }
 futures-util = { version = "0.3.31" }
 async-trait = { version = "0.1.83" }
 eyre = { version = "0.6.12" }
@@ -24,4 +24,4 @@ futures = { version = "0.3.31" }
 tracing = { version = "0.1.41" }
 #tracing-subscriber = { version = "0.3.18", features = ["env-filter", "alloc"] }
 #time = { version = "0.3.36" }
-thiserror = { version = "2.0.3" }
+thiserror = { version = "2.0.8" }
