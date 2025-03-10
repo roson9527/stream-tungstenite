@@ -2,6 +2,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::time::Duration;
 
 /// Defines the exponential backoff strategy for retry operations.
+#[derive(Clone)]
 pub struct ExpBackoffStrategy {
     min: Duration,
     max: Option<Duration>,
@@ -68,6 +69,7 @@ impl IntoIterator for ExpBackoffStrategy {
 }
 
 /// Iterator for generating exponential backoff durations.
+#[derive(Clone)]
 pub struct ExpBackoffIter {
     strategy: ExpBackoffStrategy,
     init: f64,

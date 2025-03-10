@@ -48,6 +48,14 @@ impl ReconnectOptions {
         self
     }
 
+    pub fn with_exp_backoff_strategy(&mut self, strategy: ExpBackoffStrategy) -> &mut Self {
+        let duration_iterator_ext = Box::new(strategy.into_iter());
+        self.inner.retries_to_attempt_fn = Arc::new(move || {
+            duration_iterator_ext.clone()
+        });
+        self
+    }
+
     pub fn build(&mut self) -> Self {
         Self {
             inner: std::mem::take(&mut self.inner),
