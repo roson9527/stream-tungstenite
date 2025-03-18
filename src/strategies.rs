@@ -55,7 +55,7 @@ impl IntoIterator for ExpBackoffStrategy {
         let init = self.min.as_secs_f64();
         let rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            None => StdRng::from_os_rng(),
         };
 
         ExpBackoffIter {
@@ -91,7 +91,7 @@ impl Iterator for ExpBackoffIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         let base = self.init * self.strategy.factor.powf(self.pow as f64);
-        let jitter = base * self.strategy.jitter * (self.rng.gen::<f64>() * 2. - 1.);
+        let jitter = base * self.strategy.jitter * (self.rng.random::<f64>() * 2. - 1.);
         let current = Duration::from_secs_f64(base + jitter);
         self.pow += 1;
 
