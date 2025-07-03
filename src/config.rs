@@ -105,6 +105,7 @@ impl ReconnectOptions {
         &self.retries_to_attempt_fn
     }
 
+    #[allow(dead_code)]
     pub(crate) fn exit_if_first_connect_fails(&self) -> bool {
         self.exit_if_first_connect_fails
     }

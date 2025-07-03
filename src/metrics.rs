@@ -343,7 +343,7 @@ impl MetricsCollector {
         let current_bytes = self.bytes_sent.load(Ordering::Relaxed) + self.bytes_received.load(Ordering::Relaxed);
         
         let mut stats = self.last_stats.write().await;
-        let (last_time, last_messages, last_bytes, ref mut peak_msg_rate, ref mut peak_byte_rate) = &mut *stats;
+        let (last_time, last_messages, last_bytes, peak_msg_rate, peak_byte_rate) = &mut *stats;
         
         let time_diff = now.duration_since(*last_time).as_secs_f64();
         if time_diff >= 1.0 {

@@ -166,17 +166,17 @@ mod test {
         let strategy = ExpBackoffStrategy::default();
         let mut iter = strategy.into_iter();
         
-        // 第一次延迟应该在 0.95 - 1.05 秒之间（1秒 ± 5%）
+        // First delay should be between 0.95 - 1.05 seconds (1 second ± 5%)
         let first = iter.next().unwrap();
         assert!(first >= Duration::from_millis(950));
         assert!(first <= Duration::from_millis(1050));
         
-        // 第二次延迟应该在 1.9 - 2.1 秒之间（2秒 ± 5%）
+        // Second delay should be between 1.9 - 2.1 seconds (2 seconds ± 5%)
         let second = iter.next().unwrap();
         assert!(second >= Duration::from_millis(1900));
         assert!(second <= Duration::from_millis(2100));
         
-        // 验证不会超过最大值
+        // Verify it doesn't exceed the maximum value
         for _ in 0..10 {
             let delay = iter.next().unwrap();
             assert!(delay <= Duration::from_secs(60));

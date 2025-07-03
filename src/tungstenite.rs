@@ -293,6 +293,7 @@ impl<R: IntoClientRequest + Send + Sync + Clone> ConnectionManager<R> {
     }
 
     /// Shutdown the connection manager
+    #[allow(dead_code)]
     fn shutdown(&self) {
         self.is_shutting_down.store(true, Ordering::Relaxed);
     }
@@ -487,7 +488,7 @@ impl<R: IntoClientRequest + Send + Sync + Clone> ReconnectT<R> {
         let receive_timeout = self.option.receive_timeout();
         let listener = self.receive_stream.clone();
         
-        // 使用 interval_at 创建定时器，从当前时间 + timeout 开始
+        // Use interval_at to create a timer starting from current time + timeout
         let start = Instant::now() + receive_timeout;
         let mut timeout_interval = interval_at(start, receive_timeout);
         timeout_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -508,7 +509,7 @@ impl<R: IntoClientRequest + Send + Sync + Clone> ReconnectT<R> {
                             }
                             
                             listener.notify(msg).await;
-                            // 重置超时计时器
+                            // Reset timeout timer
                             timeout_interval.reset();
                         },
                         Some(Err(e)) => {
@@ -678,22 +679,22 @@ mod tests {
     async fn test_with_custom_backoff_strategy() {
         let request = "ws://localhost:8080";
         
-        // 使用更激进的退避策略：初始延迟1秒，最大延迟30秒
+        // Use more aggressive backoff strategy: initial delay 1 second, max delay 30 seconds
         let custom_strategy = ExpBackoffStrategy::new(
             Duration::from_secs(1),
-            1.5,  // 较小的增长因子
-            0.1   // 10% 的抖动
+            1.5,  // Smaller growth factor
+            0.1   // 10% jitter
         ).with_max(Duration::from_secs(30));
         
         let options = ReconnectOptions::default()
             .with_exp_backoff_strategy(custom_strategy);
         
         let reconnect = ReconnectT::new(request, Some(options));
-        // 验证策略已设置（通过获取第一个重试延迟）
+        // Verify strategy is set (by getting the first retry delay)
         let mut retry_iter = reconnect.option.retries_to_attempt_fn()();
         let first_delay = retry_iter.next().unwrap();
-        assert!(first_delay >= Duration::from_millis(900)); // 1秒 - 10%
-        assert!(first_delay <= Duration::from_millis(1100)); // 1秒 + 10%
+        assert!(first_delay >= Duration::from_millis(900)); // 1 second - 10%
+        assert!(first_delay <= Duration::from_millis(1100)); // 1 second + 10%
     }
 
     #[test]
@@ -714,33 +715,33 @@ mod tests {
         let mut interval = interval_at(start + Duration::from_millis(100), Duration::from_millis(100));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         
-        // 第一个 tick 应该在 100ms 后触发
+        // First tick should occur after 100ms
         interval.tick().await;
         let elapsed1 = start.elapsed();
         println!("First tick at: {:?}", elapsed1);
         
-        // 等待 50ms（还有 50ms 才到下一个 tick）
+        // Wait 50ms (50ms left until next tick)
         sleep(Duration::from_millis(50)).await;
         let before_reset = start.elapsed();
         println!("Before reset at: {:?}", before_reset);
         
-        // 现在 reset，这会取消即将在 50ms 后发生的 tick
+        // Reset now, this will cancel the upcoming tick that would happen in 50ms
         interval.reset();
         let reset_time = Instant::now();
         
-        // 下一个 tick 应该在 reset 后的 100ms 触发
+        // Next tick should occur 100ms after reset
         interval.tick().await;
         let after_reset = reset_time.elapsed();
         let total_elapsed = start.elapsed();
         
         println!("After reset tick at: {:?} (from reset: {:?})", total_elapsed, after_reset);
         
-        // 验证：从 reset 时刻算起，应该等待了约 100ms
+        // Verify: from reset time, should have waited about 100ms
         assert!(after_reset >= Duration::from_millis(95) && after_reset <= Duration::from_millis(110));
         
-        // 验证 reset 确实取消了原本的 tick
-        // 如果没有 reset，第二个 tick 应该在 200ms 时触发
-        // 但因为 reset，实际上是在 150ms + 100ms = 250ms 左右触发
+        // Verify reset actually cancelled the original tick
+        // Without reset, second tick should occur at 200ms
+        // But due to reset, it actually occurs around 150ms + 100ms = 250ms
         assert!(total_elapsed >= Duration::from_millis(240));
     }
 }
