@@ -1,6 +1,6 @@
 [package]
 name = "stream-tungstenite"
-version = "0.4.6"
+version = "0.5.0"
 edition = "2021"
 authors = ["roson9527"]
 description = "A streaming implementation of the Tungstenite WebSocket protocol"
@@ -9,10 +9,10 @@ rust-version = "1.80.0"
 readme = "README.md"
 
 [dependencies]
-tokio = { version = "1.45.0", features = ["full"] }
+tokio = { version = "1.46.0", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tokio-tungstenite = { version = "0.26.2", features = ["native-tls"] }
-tungstenite = { version = "0.26.2", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.27.0", features = ["rustls-tls-webpki-roots"] }
+tungstenite = { version = "0.27.0", features = ["rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3.31" }
 async-trait = { version = "0.1.88" }
 eyre = { version = "0.6.12" }
@@ -20,5 +20,9 @@ rand = { version = "0.9.1" }
 
 futures = { version = "0.3.31" }
 tracing = { version = "0.1.41" }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 thiserror = { version = "2.0.12" }
+
+[dev-dependencies]
+tokio-test = "0.4"
